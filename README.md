@@ -1,5 +1,9 @@
 # py_portscanner
 
+A Python Port Scanner using only the standard library
+
+<!-- TODO: -->
+
 ## basic
 
 Basic TCP Port Scanning
