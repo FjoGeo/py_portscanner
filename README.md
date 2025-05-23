@@ -1,8 +1,11 @@
-# py_portscanner
+# Python Port Scanner
 
-A Python Port Scanner using only the standard library
+A Python Port Scanner using only the standard library.
+Current project is in development and is not yet complete.
 
 <!-- TODO: -->
+
+## To Do
 
 1. Service Detection (Banner Grabbing)
 2. Port State Classification (Open, Closed, Filtered)
