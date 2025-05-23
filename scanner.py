@@ -17,6 +17,8 @@ class PyScan:
 
         self.target = target
         self.threads = threads
+        self.open_ports: Set[int] = set()
+        self.port_queue = queue.Queue()
 
         self.parse_port(ports)
 
@@ -37,12 +39,22 @@ class PyScan:
     # TODO:
     def worker(self, protocol: str):
         """Thread worker: scan one port at a time from the queue"""
-        # TODO:
-        pass
+        while not self.port_queue.empty():
+            port = self.port_queue.get()
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                    sock.settimeout(1)
+                    result = sock.connect_ex((self.target, port))
+                    if result == 0:
+                        print(f"[+] Open TCP Port: {port}")
+                        self.open_ports.add(port)
+            except Exception as e:
+                print(f"[-] Error on port {port}: {e}")
+            finally:
+                self.port_queue.task_done()
 
     def scan(self):
         """Scan TCP ports using multiple threads"""
-        self.port_queue = queue.Queue()
         for port in self.ports:
             self.port_queue.put(port)
 
