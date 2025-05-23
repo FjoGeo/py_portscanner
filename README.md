@@ -4,21 +4,13 @@ A Python Port Scanner using only the standard library
 
 <!-- TODO: -->
 
-## basic
-
-Basic TCP Port Scanning
-Multi-threading or Concurrency
-Command-line Interface
-Service Detection (Basic Banner Grabbing)
-Host Discovery (Ping Sweep)
-Result Logging / Exporting
-Rate Limiting / Throttling
-
-## advanced
-
-Port Status Detection (SYN Scan Emulation)
-OS Fingerprinting (Very Basic)
-Reverse DNS Lookup
-Interactive Mode
-Live Scan Progress / ETA
-Scan Profiles
+1. Service Detection (Banner Grabbing)
+2. Port State Classification (Open, Closed, Filtered)
+3. Scan Rate Limiting
+4. Host Discovery
+5. Argparse for CLI
+6. Progress Bar
+7. Logging / Output File
+8. Spoofed Source IP
+9. Fragmentation
+10. Create alternative version as single file
