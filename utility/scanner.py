@@ -17,22 +17,25 @@ class PyScan:
         ipv6: bool = False,
     ) -> None:
 
-        self.target = target
         self.threads = threads
         self.verbose = verbose
         self.udp = udp
         self.ipv6 = ipv6
-
-        self.addr_family = socket.AF_INET6 if ipv6 else socket.AF_INET
         self.open_ports: Set[int] = set()
         self.port_queue = queue.Queue()
 
+        self.resolve_target(target)
         self.parse_port(ports)
 
-    def parse_port(self, port_input) -> None:
+    def parse_port(self, port_input: str) -> None:
         """
-        sanitize and deduplicate entered ports
+        Parse the port input string and populate the ports set.
         """
+
+        if port_input.lower() == "all" or port_input.lower() == "full":
+            self.ports = set(range(1, 65536))
+            return
+
         assert port_input, "Error: no port or input invalid"
         self.ports = set()
         for part in port_input.split(","):
@@ -55,6 +58,55 @@ class PyScan:
                     self.ports.add(int(part))
                 except ValueError:
                     raise ValueError(f"Invalid port: {part}")
+
+    def resolve_target(self, target: str) -> None:
+        """
+        Determine address type (IPv4/IPv6) and resolve if hostname.
+        Sets self.target and self.addr_family.
+        """
+        try:
+            # IPv4
+            socket.inet_pton(socket.AF_INET, target)
+            self.target = target
+            self.addr_family = socket.AF_INET
+        except OSError:
+            try:
+                # IPv6
+                socket.inet_pton(socket.AF_INET6, target)
+                self.target = target
+                self.addr_family = socket.AF_INET6
+            except OSError:
+                try:
+                    # Resolve hostname
+                    info = socket.getaddrinfo(
+                        target, None, 0, 0, 0, socket.AI_ADDRCONFIG
+                    )
+                    if not info:
+                        raise ValueError(f"Cannot resolve target: {target}")
+
+                    # Use the first address from the resolved info
+                    self.target = str(info[0][4][0])  # IP address
+                    self.addr_family = info[0][0]  # Address family
+                except Exception as e:
+                    raise ValueError(f"Invalid IP or hostname: {target} ({e})")
+
+    def scan(self):
+        """Scan ports using multiple threads"""
+        for port in self.ports:
+            self.port_queue.put(port)
+
+        threads = []
+        for _ in range(self.threads):
+            t = threading.Thread(target=self.worker)
+            threads.append(t)
+
+        for t in threads:
+            t.start()
+
+        for t in threads:
+            t.join()  # wait for finish
+
+            print("Scan complete!")
 
     def scan_tcp_port(self, port: int) -> None:
         """
@@ -118,21 +170,3 @@ class PyScan:
             else:
                 self.scan_tcp_port(port)
             self.port_queue.task_done()
-
-    def scan(self):
-        """Scan TCP ports using multiple threads"""
-        for port in self.ports:
-            self.port_queue.put(port)
-
-        threads = []
-        for _ in range(self.threads):
-            t = threading.Thread(target=self.worker)
-            threads.append(t)
-
-        for t in threads:
-            t.start()
-
-        for t in threads:
-            t.join()  # wait for finish
-
-        print("Scan complete!")
