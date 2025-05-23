@@ -14,13 +14,16 @@ class PyScan:
         threads: int,
         verbose: bool = False,
         udp: bool = False,
-        # TODO: IP6 or IP4
+        ipv6: bool = False,
     ) -> None:
 
         self.target = target
         self.threads = threads
         self.verbose = verbose
         self.udp = udp
+        self.ipv6 = ipv6
+
+        self.addr_family = socket.AF_INET6 if ipv6 else socket.AF_INET
         self.open_ports: Set[int] = set()
         self.port_queue = queue.Queue()
 
@@ -34,19 +37,35 @@ class PyScan:
         self.ports = set()
         for part in port_input.split(","):
             part = part.strip()
+            if not part:
+                continue
             if "-" in part:
-                start, end = map(int, part.split("-"))
-                self.ports.update(range(start, end + 1))
+                try:
+                    start, end = map(int, part.split("-"))
+                    if start < 1 or end > 65535 or start > end:
+                        raise ValueError(f"Invalid port range: {part}")
+                    self.ports.update(range(start, end + 1))
+                except ValueError:
+                    raise ValueError(f"Invalid port range: {part}")
             else:
-                self.ports.add(int(part))
+                try:
+                    port = int(part)
+                    if port < 1 or port > 65535:
+                        raise ValueError(f"Invalid port: {part}")
+                    self.ports.add(int(part))
+                except ValueError:
+                    raise ValueError(f"Invalid port: {part}")
 
     def scan_tcp_port(self, port: int) -> None:
         """
         Scan a single TCP port
         """
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        with socket.socket(self.addr_family, socket.SOCK_STREAM) as sock:
             sock.settimeout(1)
-            result = sock.connect_ex((self.target, port))
+            addr_info = socket.getaddrinfo(
+                self.target, port, self.addr_family, socket.SOCK_STREAM
+            )
+            result = sock.connect_ex(addr_info[0][4])
             if result == 0:
                 print(f"[+] Open TCP Port: {port}")
                 self.open_ports.add(port)
@@ -55,23 +74,33 @@ class PyScan:
                     print(f"[-] Closed TCP Port: {port}")
 
     def scan_udp_port(self, port: int) -> None:
+        """
+        Scan a single UDP port
+        """
+        UDP_PAYLOADS = {
+            53: udp_helper.build_dns_query,
+            161: udp_helper.build_snmp_get,
+            123: udp_helper.build_ntp_request,
+        }
         try:
-            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            with socket.socket(self.addr_family, socket.SOCK_DGRAM) as sock:
                 sock.settimeout(1)
-                if port == 53:
-                    payload = udp_helper.build_dns_query()
-                elif port == 161:
-                    payload = udp_helper.build_snmp_get()
-                elif port == 123:
-                    payload = udp_helper.build_ntp_request()
-                else:
-                    payload = b""  # fallback
 
-                sock.sendto(payload, (self.target, port))
+                payload_func = UDP_PAYLOADS.get(port)
+                payload = payload_func() if payload_func else b""
+
+                addr_info = socket.getaddrinfo(
+                    self.target, port, self.addr_family, socket.SOCK_DGRAM
+                )
+                sock.sendto(payload, addr_info[0][4])
                 try:
                     data, _ = sock.recvfrom(1024)
-                    print(f"[+] Open UDP Port {port} (got response)")
-                    self.open_ports.add(port)
+                    if data:
+                        if self.verbose:
+                            print(f"[+] UDP Port {port} (got response)")
+                            self.open_ports.add(port)
+                        else:
+                            print(f"[+] Open UDP Port {port} (got response)")
                 except socket.timeout:
                     if self.verbose:
                         print(
@@ -107,15 +136,3 @@ class PyScan:
             t.join()  # wait for finish
 
         print("Scan complete!")
-
-
-if __name__ == "__main__":
-    # 192.168.178.109 my KALI VM
-    scanner = PyScan(
-        target="192.168.178.109",
-        ports="22,80,443,8000-8005",
-        threads=10,
-        verbose=True,
-        udp=True,
-    )
-    scanner.scan()
