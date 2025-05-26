@@ -7,8 +7,6 @@ Current project is in development and is not yet complete.
 
 ## To Do
 
-1. Service Detection (Banner Grabbing)
-2. Port State Classification (Open, Closed, Filtered)
 3. Scan Rate Limiting
 4. Host Discovery
 5. Argparse for CLI

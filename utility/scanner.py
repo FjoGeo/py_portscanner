@@ -1,9 +1,11 @@
+import errno
 import queue
 import socket
 import threading
 from typing import Set
 
 from utility import udp_helper
+from utility.tcp_helper import get_banner
 
 
 class PyScan:
@@ -15,13 +17,17 @@ class PyScan:
         verbose: bool = False,
         udp: bool = False,
         ipv6: bool = False,
+        scan_delay: float = 0.0,
     ) -> None:
 
         self.threads = threads
         self.verbose = verbose
         self.udp = udp
         self.ipv6 = ipv6
+        self.scan_delay = scan_delay
         self.open_ports: Set[int] = set()
+        self.closed_ports: Set[int] = set()
+        self.filtered_ports: Set[int] = set()
         self.port_queue = queue.Queue()
 
         self.resolve_target(target)
@@ -106,8 +112,6 @@ class PyScan:
         for t in threads:
             t.join()  # wait for finish
 
-            print("Scan complete!")
-
     def scan_tcp_port(self, port: int) -> None:
         """
         Scan a single TCP port
@@ -121,9 +125,28 @@ class PyScan:
             if result == 0:
                 print(f"[+] Open TCP Port: {port}")
                 self.open_ports.add(port)
-            else:
+                try:
+                    BANNER_PROBES = get_banner()
+                    probe = BANNER_PROBES.get(port, b"")
+                    if probe:
+                        sock.sendall(probe)
+                    banner = sock.recv(1024)
+                    if banner and self.verbose:
+                        print(f"    [Banner] {banner.decode(errors='ignore').strip()}")
+                except socket.timeout:
+                    if self.verbose:
+                        print("    [!] Timeout while grabbing banner")
+                except Exception as e:
+                    if self.verbose:
+                        print(f"[!] Error receiving banner on port {port}: {e}")
+            elif result == errno.ECONNREFUSED:
+                self.closed_ports.add(port)
                 if self.verbose:
                     print(f"[-] Closed TCP Port: {port}")
+            else:
+                self.filtered_ports.add(port)
+                if self.verbose:
+                    print(f"[?] Filtered TCP Port: {port} (result code: {result})")
 
     def scan_udp_port(self, port: int) -> None:
         """
@@ -148,16 +171,19 @@ class PyScan:
                 try:
                     data, _ = sock.recvfrom(1024)
                     if data:
+                        self.open_ports.add(port)
                         if self.verbose:
                             print(f"[+] UDP Port {port} (got response)")
-                            self.open_ports.add(port)
-                        else:
-                            print(f"[+] Open UDP Port {port} (got response)")
                 except socket.timeout:
+                    self.filtered_ports.add(port)
                     if self.verbose:
                         print(
                             f"[?] UDP Port {port}: No response (may be open/filtered)"
                         )
+                except ConnectionRefusedError:
+                    self.closed_ports.add(port)
+                    if self.verbose:
+                        print(f"[-] Closed UDP Port: {port}")
         except Exception as e:
             print(f"[!] Error scanning UDP port {port}: {e}")
 
@@ -169,4 +195,9 @@ class PyScan:
                 self.scan_udp_port(port)
             else:
                 self.scan_tcp_port(port)
+
+            # Rate limiting
+            if self.scan_delay > 0:
+                threading.Event().wait(self.scan_delay)
+
             self.port_queue.task_done()
