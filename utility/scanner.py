@@ -19,6 +19,7 @@ class PyScan:
         ipv6: bool = False,
         scan_delay: float = 0.0,
         skip_dead_hosts: bool = False,
+        logging: bool = False,  # TODO: implement logging
     ) -> None:
 
         self.threads = threads
@@ -27,6 +28,7 @@ class PyScan:
         self.ipv6 = ipv6
         self.scan_delay = scan_delay
         self.skip_dead_hosts = skip_dead_hosts
+        self.logging = logging
         self.open_ports: Set[int] = set()
         self.closed_ports: Set[int] = set()
         self.filtered_ports: Set[int] = set()
