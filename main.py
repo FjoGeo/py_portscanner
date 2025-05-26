@@ -54,14 +54,15 @@ def main():
         help="Rate limit (seconds delay between scans)",
     )
     parser.add_argument(
+        "-sdh",
         "--skip_dead_hosts",
-        default=False,
-        help="Skip host discovery (always scan)",
+        action="store_true",
+        help="Skip host discovery",
     )
     parser.add_argument(
         "-l",
         "--logging",
-        default=None,
+        action="store_true",
         help="Log file to save scan results (default: None, no logging)",
     )
 
