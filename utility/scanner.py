@@ -18,6 +18,7 @@ class PyScan:
         udp: bool = False,
         ipv6: bool = False,
         scan_delay: float = 0.0,
+        skip_dead_hosts: bool = False,
     ) -> None:
 
         self.threads = threads
@@ -25,6 +26,7 @@ class PyScan:
         self.udp = udp
         self.ipv6 = ipv6
         self.scan_delay = scan_delay
+        self.skip_dead_hosts = skip_dead_hosts
         self.open_ports: Set[int] = set()
         self.closed_ports: Set[int] = set()
         self.filtered_ports: Set[int] = set()
@@ -32,6 +34,24 @@ class PyScan:
 
         self.resolve_target(target)
         self.parse_port(ports)
+
+    def is_host_up(self, ports=[80, 443], timeout=1) -> bool:
+        """
+        Check if the host is up by attempting to connect to common ports.
+        Returns True if at least one port is open, False otherwise.
+        """
+        for port in ports:
+            try:
+                with socket.socket(self.addr_family, socket.SOCK_STREAM) as sock:
+                    sock.settimeout(timeout)
+                    result = sock.connect_ex((self.target, port))
+                    if result == 0:
+                        return True  # Host is up
+            except Exception as e:
+                if self.verbose:
+                    print(f"[!] Error checking port {port}: {e}")
+                    continue
+        return False
 
     def parse_port(self, port_input: str) -> None:
         """
@@ -98,6 +118,15 @@ class PyScan:
 
     def scan(self):
         """Scan ports using multiple threads"""
+
+        if self.skip_dead_hosts:
+            print(f"[*] Performing host discovery for {self.target}...")
+            if not self.is_host_up():
+                print(f"[!] Host {self.target} appears to be down. Skipping scan.")
+                return
+            else:
+                print(f"[+] Host {self.target} is up. Starting port scan.")
+
         for port in self.ports:
             self.port_queue.put(port)
 

@@ -7,7 +7,6 @@ Current project is in development and is not yet complete.
 
 ## To Do
 
-3. Scan Rate Limiting
 4. Host Discovery
 5. Argparse for CLI
 6. Progress Bar
