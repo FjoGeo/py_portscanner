@@ -1,7 +1,36 @@
 # Python Port Scanner
 
 A Python Port Scanner using only the standard library.
-Current project is in development and is not yet complete.
+Intended to be used on a machine without nmap or other port scanning tools installed.
+
+## Features:
+
+- Scans TCP and UDP ports
+- Supports IPv4 and IPv6
+- Multi-threaded for faster scanning
+- Customizable port ranges and specific ports
+- Verbose output for detailed results
+- Optional logging to a file
+- Skips dead hosts to save time
+- Rate limiting to control scan speed
+
+## Installation:
+
+Clone the repository and run the script directly:
+
+```bash
+git clone https://github.com/FjoGeo/py_portscanner.git
+cd py_portscanner
+python main.py --help
+```
+
+If you want to use the script in a single file, use the script located in the `single_file_directoryi` or copy and paste it from GitHub into your texteditor of choice:
+
+```bash
+git clone clone https://github.com/FjoGeo/py_portscanner.git
+cd py_portscanner/single_file_directory
+python main.py --help
+```
 
 ---
 
@@ -23,20 +52,8 @@ Current project is in development and is not yet complete.
     Log file to save scan results (default: None, no logging)
 ```
 
-## Usage:
+## Example Usage:
 
 ```bash
 python main.py -ta 192.168.178.109 -p 22 -v -l -sdh
 ```
-
----
-
-<!-- TODO: -->
-
-## To Do
-
-6. Progress Bar
-7. Logging / Output File
-8. Spoofed Source IP
-9. Fragmentation
-10. Create alternative version as single file
