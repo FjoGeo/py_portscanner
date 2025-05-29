@@ -24,7 +24,7 @@ cd py_portscanner
 python main.py --help
 ```
 
-If you want to use the script in a single file, use the script located in the `single_file_directoryi` or copy and paste it from GitHub into your texteditor of choice:
+If you want to use the script in a single file, use the script located in the `single_file_directory` or copy and paste it from GitHub into your texteditor of choice:
 
 ```bash
 git clone clone https://github.com/FjoGeo/py_portscanner.git
